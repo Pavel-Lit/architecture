@@ -1,14 +1,14 @@
 package ru.geekbrains;
 
+import ru.geekbrains.domain.HttpRequest;
+import ru.geekbrains.domain.HttpResponse;
 import ru.geekbrains.service.FileService;
 import ru.geekbrains.service.SocketService;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 import java.util.Deque;
+import java.util.HashMap;
+import java.util.Map;
 
 public class RequestHandler implements Runnable {
 
@@ -24,24 +24,26 @@ public class RequestHandler implements Runnable {
     @Override
     public void run() {
         Deque<String> rawRequest = socketService.readRequest();
-        String firstLine = rawRequest.pollFirst();
-        String[] parts = firstLine.split(" ");
 
-        if (!fileService.exists(parts[1])) {
-            String rawResponse =
-                    "HTTP/1.1 404 NOT_FOUND\n" +
-                            "Content-Type: text/html; charset=utf-8\n" +
-                            "\n" +
-                            "<h1>Файл не найден!</h1>";
-            socketService.writeResponse(rawResponse);
+        HttpRequest httpRequest = new RequestParser().parse(rawRequest);
+        HttpResponse httpResponse = new HttpResponse();
+
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type:", "text/html; charset=utf-8\n");
+
+        if (!fileService.exists(httpRequest.getPath())) {
+
+            httpResponse.setStatusCode(String.valueOf(StatusCode.NOT_FOUND));
+            httpResponse.setHeaders(headers);
+            httpResponse.setBody("<h1>Файл не найден!</h1>");
+            socketService.writeResponse(new ResponseSerializer().serialize(httpResponse));
             return;
         }
+        httpResponse.setStatusCode(String.valueOf(StatusCode.OK));
+        httpResponse.setHeaders(headers);
+        httpResponse.setBody(fileService.readFile(httpRequest.getPath()));
+        socketService.writeResponse(new ResponseSerializer().serialize(httpResponse));
 
-        String rawResponse = "HTTP/1.1 200 OK\n" +
-                "Content-Type: text/html; charset=utf-8\n" +
-                "\n" +
-                fileService.readFile(parts[1]);
-        socketService.writeResponse(rawResponse);
 
         try {
             socketService.close();
@@ -49,21 +51,6 @@ public class RequestHandler implements Runnable {
             throw new IllegalStateException(ex);
         }
         System.out.println("Client disconnected!");
-//        try (BufferedReader input = new BufferedReader(
-//                new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8))
-//        ) {
-//            while (!input.ready());
-//
-//            String[] parts = Parser.parseMessage(input);
-//            while (input.ready()) {
-//                System.out.println(input.readLine());
-//            }
-//
-//            FileCheck.fileCheck(folder, parts[1], socket);
-//
-//            System.out.println("Client disconnected!");
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
+
     }
 }
