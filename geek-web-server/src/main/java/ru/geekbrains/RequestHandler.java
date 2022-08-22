@@ -7,41 +7,40 @@ import ru.geekbrains.service.SocketService;
 
 import java.io.IOException;
 import java.util.Deque;
-import java.util.HashMap;
-import java.util.Map;
 
 public class RequestHandler implements Runnable {
 
     private final SocketService socketService;
-
     private final FileService fileService;
+    private final RequestParser requestParser;
+    private final ResponseSerializer responseSerializer;
 
-    public RequestHandler(SocketService socketService, FileService fileService) {
+    public RequestHandler(SocketService socketService, FileService fileService, RequestParser requestParser, ResponseSerializer responseSerializer) {
         this.socketService = socketService;
         this.fileService = fileService;
+        this.requestParser = requestParser;
+        this.responseSerializer = responseSerializer;
     }
 
     @Override
     public void run() {
         Deque<String> rawRequest = socketService.readRequest();
 
-        HttpRequest httpRequest = new RequestParser().parse(rawRequest);
+        HttpRequest httpRequest = requestParser.parse(rawRequest);
         HttpResponse httpResponse = new HttpResponse();
 
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type:", "text/html; charset=utf-8\n");
+        if (!fileService.exists(httpRequest.getUrl())) {
 
-        if (!fileService.exists(httpRequest.getPath())) {
-
-            httpResponse.setStatusCode(String.valueOf(StatusCode.NOT_FOUND));
-            httpResponse.setHeaders(headers);
+            httpResponse.setStatusCode(404);
+            httpResponse.setStatusCodeName("NOT_FOUND");
+            httpResponse.getHeaders().put("Content-Type", "text/html; charset=utf-8\n");
             httpResponse.setBody("<h1>Файл не найден!</h1>");
-            socketService.writeResponse(new ResponseSerializer().serialize(httpResponse));
+            socketService.writeResponse(responseSerializer.serialize(httpResponse));
             return;
         }
-        httpResponse.setStatusCode(String.valueOf(StatusCode.OK));
-        httpResponse.setHeaders(headers);
-        httpResponse.setBody(fileService.readFile(httpRequest.getPath()));
+        httpResponse.setStatusCode(200);
+        httpResponse.getHeaders().put("Content-Type", "text/html; charset=utf-8\n");
+        httpResponse.setBody(fileService.readFile(httpRequest.getUrl()));
         socketService.writeResponse(new ResponseSerializer().serialize(httpResponse));
 
 

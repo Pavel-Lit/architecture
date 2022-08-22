@@ -1,29 +1,26 @@
 package ru.geekbrains.domain;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class HttpResponse {
 
-    private String statusCode;
+    private int statusCode;
 
-    private Map<String, String> headers;
+    private String statusCodeName;
+
+    private Map<String, String> headers = new HashMap<>();
 
     private String body;
 
     public HttpResponse() {
     }
 
-    public HttpResponse(String statusCode, Map<String, String> headers, String body) {
-        this.statusCode = statusCode;
-        this.headers = headers;
-        this.body = body;
-    }
-
-    public String getStatusCode() {
+    public int getStatusCode() {
         return statusCode;
     }
 
-    public void setStatusCode(String statusCode) {
+    public void setStatusCode(int statusCode) {
         this.statusCode = statusCode;
     }
 
@@ -42,4 +39,14 @@ public class HttpResponse {
     public void setBody(String body) {
         this.body = body;
     }
+
+    public String getStatusCodeName() {
+        return statusCodeName;
+    }
+
+    public void setStatusCodeName(String statusCodeName) {
+        this.statusCodeName = statusCodeName;
+    }
+
+
 }

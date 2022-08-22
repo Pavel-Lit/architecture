@@ -6,32 +6,25 @@ import java.util.*;
 
 public class RequestParser {
 
-    public HttpRequest parse(Deque<String> rawResponse) {
+    public HttpRequest parse(Deque<String> rawRequest) {
         HttpRequest httpRequest = new HttpRequest();
-        LinkedList<String> tempList = (LinkedList<String>) rawResponse;
-        Map<String, String> tempMap = new HashMap<>();
-        String[] tempArray = tempList.peekFirst().split(" ");
-        httpRequest.setMethod(tempArray[0]);
-        System.out.println(Arrays.toString(tempArray));
-        httpRequest.setPath(tempArray[1]);
-        tempList.removeFirst();
-        /* не понял как обработать body у http запроса
-        if (tempList.peekLast().startsWith("Body: ")) {
-            httpRequest.setBody(tempList.peekLast());
-            tempList.removeLast();
+        String[] firstLine = rawRequest.pollFirst().split(" ");
+        httpRequest.setMethod(firstLine[0]);
+        httpRequest.setUrl(firstLine[1]);
+
+        while (!rawRequest.isEmpty()) {
+            String line = rawRequest.pollFirst();
+            if (line.isBlank()) {
+                break;
+            }
+            String[] header = line.split(": ");
+            httpRequest.getHeaders().put(header[0], header[1]);
         }
-        */
-        for (ListIterator<String> iterator = tempList.listIterator(); iterator.hasNext(); ) {
-
-            String tempString = iterator.next();
-            tempArray = tempString.split(" ", 2);
-            System.out.println(Arrays.toString(tempArray));
-            if (tempArray.length > 1)
-                tempMap.put(tempArray[0], tempArray[1]);
+        StringBuilder sb = new StringBuilder();
+        while (!rawRequest.isEmpty()) {
+            sb.append(rawRequest.pollFirst());
         }
-        httpRequest.setHeaders(tempMap);
-
-
+        httpRequest.setBody(sb.toString());
         return httpRequest;
     }
 }
