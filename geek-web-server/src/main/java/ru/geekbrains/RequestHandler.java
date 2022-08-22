@@ -7,6 +7,8 @@ import ru.geekbrains.service.SocketService;
 
 import java.io.IOException;
 import java.util.Deque;
+import java.util.HashMap;
+import java.util.Map;
 
 public class RequestHandler implements Runnable {
 
@@ -25,23 +27,29 @@ public class RequestHandler implements Runnable {
     @Override
     public void run() {
         Deque<String> rawRequest = socketService.readRequest();
-
         HttpRequest httpRequest = requestParser.parse(rawRequest);
-        HttpResponse httpResponse = new HttpResponse();
-
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "text/html; charset=utf-8\n");
         if (!fileService.exists(httpRequest.getUrl())) {
 
-            httpResponse.setStatusCode(404);
-            httpResponse.setStatusCodeName("NOT_FOUND");
-            httpResponse.getHeaders().put("Content-Type", "text/html; charset=utf-8\n");
-            httpResponse.setBody("<h1>Файл не найден!</h1>");
-            socketService.writeResponse(responseSerializer.serialize(httpResponse));
+
+            socketService.writeResponse(responseSerializer
+                    .serialize(HttpResponse.
+                            createBuilder()
+                            .withStatusCode(404)
+                            .withStatusCodeName("NOT_FOUND")
+                            .withHeaders(headers)
+                            .withBody("<h1>Файл не найден!</h1>")
+                            .build()));
             return;
         }
-        httpResponse.setStatusCode(200);
-        httpResponse.getHeaders().put("Content-Type", "text/html; charset=utf-8\n");
-        httpResponse.setBody(fileService.readFile(httpRequest.getUrl()));
-        socketService.writeResponse(new ResponseSerializer().serialize(httpResponse));
+
+        socketService.writeResponse(responseSerializer.serialize(HttpResponse.createBuilder()
+                .withStatusCode(200)
+                .withStatusCodeName("OK")
+                .withHeaders(headers)
+                .withBody(fileService.readFile(httpRequest.getUrl()))
+                .build()));
 
 
         try {
