@@ -1,47 +1,48 @@
 package ru.geekbrains;
 
+import ru.geekbrains.domain.HttpRequest;
+import ru.geekbrains.domain.HttpResponse;
 import ru.geekbrains.service.FileService;
 import ru.geekbrains.service.SocketService;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 import java.util.Deque;
 
 public class RequestHandler implements Runnable {
 
     private final SocketService socketService;
-
     private final FileService fileService;
+    private final RequestParser requestParser;
+    private final ResponseSerializer responseSerializer;
 
-    public RequestHandler(SocketService socketService, FileService fileService) {
+    public RequestHandler(SocketService socketService, FileService fileService, RequestParser requestParser, ResponseSerializer responseSerializer) {
         this.socketService = socketService;
         this.fileService = fileService;
+        this.requestParser = requestParser;
+        this.responseSerializer = responseSerializer;
     }
 
     @Override
     public void run() {
         Deque<String> rawRequest = socketService.readRequest();
-        String firstLine = rawRequest.pollFirst();
-        String[] parts = firstLine.split(" ");
 
-        if (!fileService.exists(parts[1])) {
-            String rawResponse =
-                    "HTTP/1.1 404 NOT_FOUND\n" +
-                            "Content-Type: text/html; charset=utf-8\n" +
-                            "\n" +
-                            "<h1>Файл не найден!</h1>";
-            socketService.writeResponse(rawResponse);
+        HttpRequest httpRequest = requestParser.parse(rawRequest);
+        HttpResponse httpResponse = new HttpResponse();
+
+        if (!fileService.exists(httpRequest.getUrl())) {
+
+            httpResponse.setStatusCode(404);
+            httpResponse.setStatusCodeName("NOT_FOUND");
+            httpResponse.getHeaders().put("Content-Type", "text/html; charset=utf-8\n");
+            httpResponse.setBody("<h1>Файл не найден!</h1>");
+            socketService.writeResponse(responseSerializer.serialize(httpResponse));
             return;
         }
+        httpResponse.setStatusCode(200);
+        httpResponse.getHeaders().put("Content-Type", "text/html; charset=utf-8\n");
+        httpResponse.setBody(fileService.readFile(httpRequest.getUrl()));
+        socketService.writeResponse(new ResponseSerializer().serialize(httpResponse));
 
-        String rawResponse = "HTTP/1.1 200 OK\n" +
-                "Content-Type: text/html; charset=utf-8\n" +
-                "\n" +
-                fileService.readFile(parts[1]);
-        socketService.writeResponse(rawResponse);
 
         try {
             socketService.close();
@@ -49,21 +50,6 @@ public class RequestHandler implements Runnable {
             throw new IllegalStateException(ex);
         }
         System.out.println("Client disconnected!");
-//        try (BufferedReader input = new BufferedReader(
-//                new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8))
-//        ) {
-//            while (!input.ready());
-//
-//            String[] parts = Parser.parseMessage(input);
-//            while (input.ready()) {
-//                System.out.println(input.readLine());
-//            }
-//
-//            FileCheck.fileCheck(folder, parts[1], socket);
-//
-//            System.out.println("Client disconnected!");
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
+
     }
 }
