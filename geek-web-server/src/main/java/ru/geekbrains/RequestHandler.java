@@ -2,7 +2,7 @@ package ru.geekbrains;
 
 import ru.geekbrains.domain.HttpRequest;
 import ru.geekbrains.domain.HttpResponse;
-import ru.geekbrains.service.FileService;
+import ru.geekbrains.service.FileServiceImpl;
 import ru.geekbrains.service.SocketService;
 
 import java.io.IOException;
@@ -13,13 +13,13 @@ import java.util.Map;
 public class RequestHandler implements Runnable {
 
     private final SocketService socketService;
-    private final FileService fileService;
+    private final FileServiceImpl fileServiceImpl;
     private final RequestParser requestParser;
     private final ResponseSerializer responseSerializer;
 
-    public RequestHandler(SocketService socketService, FileService fileService, RequestParser requestParser, ResponseSerializer responseSerializer) {
+    public RequestHandler(SocketService socketService, FileServiceImpl fileServiceImpl, RequestParser requestParser, ResponseSerializer responseSerializer) {
         this.socketService = socketService;
-        this.fileService = fileService;
+        this.fileServiceImpl = fileServiceImpl;
         this.requestParser = requestParser;
         this.responseSerializer = responseSerializer;
     }
@@ -30,7 +30,7 @@ public class RequestHandler implements Runnable {
         HttpRequest httpRequest = requestParser.parse(rawRequest);
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "text/html; charset=utf-8\n");
-        if (!fileService.exists(httpRequest.getUrl())) {
+        if (!fileServiceImpl.exists(httpRequest.getUrl())) {
 
 
             socketService.writeResponse(responseSerializer
@@ -48,7 +48,7 @@ public class RequestHandler implements Runnable {
                 .withStatusCode(200)
                 .withStatusCodeName("OK")
                 .withHeaders(headers)
-                .withBody(fileService.readFile(httpRequest.getUrl()))
+                .withBody(fileServiceImpl.readFile(httpRequest.getUrl()))
                 .build()));
 
 
