@@ -69,8 +69,8 @@ public class HttpResponse {
             return this;
         }
 
-        public Builder withHeaders(Map<String, String> headers){
-            this.httpResponse.headers = headers;
+        public Builder withHeaders(String key, String values){
+            this.httpResponse.getHeaders().put(key, values);
             return this;
         }
 
