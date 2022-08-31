@@ -2,7 +2,8 @@ package ru.geekbrains;
 
 import ru.geekbrains.domain.HttpRequest;
 import ru.geekbrains.domain.HttpResponse;
-import ru.geekbrains.service.FileServiceImpl;
+import ru.geekbrains.handler.MethodHandler;
+import ru.geekbrains.service.FileService;
 import ru.geekbrains.service.SocketService;
 
 import java.io.IOException;
@@ -13,43 +14,21 @@ import java.util.Map;
 public class RequestHandler implements Runnable {
 
     private final SocketService socketService;
-    private final FileServiceImpl fileServiceImpl;
     private final RequestParser requestParser;
-    private final ResponseSerializer responseSerializer;
+    private final MethodHandler methodHandler;
 
-    public RequestHandler(SocketService socketService, FileServiceImpl fileServiceImpl, RequestParser requestParser, ResponseSerializer responseSerializer) {
+    public RequestHandler(SocketService socketService, RequestParser requestParser, MethodHandler methodHandler) {
         this.socketService = socketService;
-        this.fileServiceImpl = fileServiceImpl;
         this.requestParser = requestParser;
-        this.responseSerializer = responseSerializer;
+        this.methodHandler = methodHandler;
     }
 
     @Override
     public void run() {
         Deque<String> rawRequest = socketService.readRequest();
         HttpRequest httpRequest = requestParser.parse(rawRequest);
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "text/html; charset=utf-8\n");
-        if (!fileServiceImpl.exists(httpRequest.getUrl())) {
 
-
-            socketService.writeResponse(responseSerializer
-                    .serialize(HttpResponse.
-                            createBuilder()
-                            .withStatusCode(404)
-                            .withStatusCodeName("NOT_FOUND")
-                            .withHeaders(headers)
-                            .withBody("<h1>Файл не найден!</h1>")
-                            .build()));
-            return;
-        }
-
-        socketService.writeResponse(responseSerializer.serialize(HttpResponse.createBuilder()
-                .withStatusCode(200)
-                .withStatusCodeName("OK")
-                .withHeaders(headers)
-                .withBody(fileServiceImpl.readFile(httpRequest.getUrl()))
-                .build()));
+        methodHandler.handel(httpRequest);
 
 
         try {
